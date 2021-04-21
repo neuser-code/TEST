@@ -1,0 +1,46 @@
+- hosts: all #Устанавливает на все хосты описанные в inventory backend тестового приложения, создает systemd unit sample-b.service не запускает автоматически.
+  become:
+    true
+  become_method:
+    sudo
+  become_user:
+    root
+  tasks:
+   - name: Installing Python packages
+     apt: pkg={{ item }}
+     with_items:
+        - build-essential
+        - python3-dev
+        - libssl-dev
+        - libffi-dev
+        - libpq-dev
+        - python3-psycopg2
+   - name: add key #Добавляем ключ репозитория postgres
+     apt_key: url=https://www.postgresql.org/media/keys/ACCC4CF8.asc state=present
+   - name: Add Postgresql repo #Добавляем репозиторий postgres для своей версии ОС
+     apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main' state=present
+   - name: Update apt cache
+     apt: update_cache=yes
+   - name: Install Postgresql-12 #Устанавливаем Postgresql-12
+     apt: pkg=postgresql-12
+          state=present
+   - name: Grant user postgres #Изменяем pg_hba.conf чтобы можно было подключиться
+     community.postgresql.postgresql_pg_hba:
+       dest: /etc/postgresql/12/main/pg_hba.conf
+       contype: local
+       users: all,postgres
+       databases: all
+       method: trust
+   - name: Reload service postgresql, in all cases
+     ansible.builtin.systemd:
+       name: postgresql
+       state: reloaded
+   - postgresql_db:
+       name: app
+   - name: Connect to app database, create user worker, grant all privileges #Подключаемся к базе, создаем пользователя, даем права
+     postgresql_user:
+       db: app
+       name: worker
+       password: worker
+       priv: ALL
+
