@@ -1,4 +1,4 @@
-- hosts: all #Устанавливает на все хосты описанные в inventory backend тестового приложения, создает systemd unit sample-b.service не запускает автоматически.
+- hosts: all
   become:
     true
   become_method:
